@@ -23,8 +23,13 @@ async function run() {
     await testConnection('TLS Insecure', { tlsInsecure: true });
 
     // Test 5: Standard Connection String (Bypass SRV)
-    const standardUri = 'mongodb://mayankparashar2808_db_user:oXifdjFW6GocsM6a@ac-08nn7ji-shard-00-00.gfmcegl.mongodb.net:27017,ac-08nn7ji-shard-00-01.gfmcegl.mongodb.net:27017,ac-08nn7ji-shard-00-02.gfmcegl.mongodb.net:27017/clinic_care_connect?ssl=true&replicaSet=atlas-btf2rh-shard-0&authSource=admin&retryWrites=true&w=majority';
-    await testConnection('Standard URI (Bypass SRV)', { uri: standardUri, family: 4, tlsInsecure: true });
+    // Test 5: Standard Connection String (Bypass SRV)
+    const standardUri = process.env.MONGODB_STANDARD_URI;
+    if (standardUri) {
+        await testConnection('Standard URI (Bypass SRV)', { uri: standardUri, family: 4, tlsInsecure: true });
+    } else {
+        console.log('\n⚠️  Skipping: Standard URI (Bypass SRV) - MONGODB_STANDARD_URI not set');
+    }
 
     process.exit(0);
 }

@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar, Clock, Stethoscope, UserPlus } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAppointments } from "@/hooks/use-appointments";
 import { useDoctorsList } from "@/hooks/use-profiles";
@@ -13,6 +13,10 @@ import PaymentsTab from "./reception/PaymentsTab";
 
 export default function ReceptionistDashboard() {
     const { user } = useAuth();
+    const [, setLocation] = useLocation();
+    const search = useSearch();
+    const query = new URLSearchParams(search);
+    const currentTab = query.get("tab") || "patients";
     const { data: appointments } = useAppointments();
     const { data: doctors } = useDoctorsList();
 
@@ -85,7 +89,7 @@ export default function ReceptionistDashboard() {
                 </Card>
             </div>
 
-            <Tabs defaultValue="patients" className="space-y-6">
+            <Tabs value={currentTab} onValueChange={(val) => setLocation(`/dashboard/receptionist?tab=${val}`)} className="space-y-6">
                 <TabsList className="bg-slate-100 p-1 rounded-xl">
                     <TabsTrigger value="patients" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">Patients</TabsTrigger>
                     <TabsTrigger value="visits" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">Visits & Check-Ins</TabsTrigger>

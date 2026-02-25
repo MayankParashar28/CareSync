@@ -28,19 +28,8 @@ function usePatientDetails(patientId: string) {
     });
 }
 
-function usePatientUser(userId: string) {
-    // Fetch the user details (name, email) for the patient. 
-    // Currently api.patients.get returns just the patient profile which has userId ref.
-    // We might need an endpoint to get user details or it might be populated? 
-    // Let's assume for now we might need to rely on what we have or update backend. 
-    // Actually, storage.getPatient doesn't populate user. 
-    // Let's update `storage.getPatient` to populate user or handle it.
-    // For now, let's assume we can get basic info or improved backend later.
-    // But wait, the list endpoint populates user. The get endpoint might not?
-    // Let's check `server/storage.ts` later. 
-    // For now, we will render what we have.
-    return { data: null }; // Placeholder
-}
+
+
 
 
 export default function DoctorPatientView() {

@@ -42,7 +42,10 @@ export default function PatientDashboard() {
   const latestVisitDate = records?.[0]?.visitDate;
   const earliestVisitDate = records?.[records.length - 1]?.visitDate;
   const lastVisit = typeof latestVisitDate === "string" ? new Date(latestVisitDate) : null;
-  const firstVisit = typeof earliestVisitDate === "string" ? new Date(earliestVisitDate) : null; // Assuming simplified ordering for now
+  const firstVisit = typeof earliestVisitDate === "string" ? new Date(earliestVisitDate) : null;
+
+  // Get latest follow-up recommendation
+  const latestFollowUp = records?.[0]?.followUpDate;
 
   if (isLoadingProfile || isLoadingAppts || isLoadingRecords) {
     return <div className="p-10 space-y-4"><Skeleton className="h-12 w-1/3" /><Skeleton className="h-64 w-full" /></div>;
@@ -137,10 +140,19 @@ export default function PatientDashboard() {
                   <p className="text-sm text-blue-800">Dr. {nextAppt.doctor?.user?.lastName} ({nextAppt.doctor?.specialization})</p>
                   <p className="text-xs text-blue-600 mt-1">{nextAppt.reason || 'Check-up'}</p>
                 </div>
+              ) : latestFollowUp ? (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-blue-800">Doctor Recommended Date:</p>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5 text-blue-600" />
+                    <span className="text-2xl font-bold text-blue-900">{format(new Date(latestFollowUp), "MMM d, yyyy")}</span>
+                  </div>
+                  <p className="text-xs text-blue-600 mt-2">Please contact the clinic to confirm.</p>
+                </div>
               ) : (
                 <div className="text-center py-4">
                   <p className="text-sm text-blue-600 mb-3">No follow-ups scheduled.</p>
-                  <Link href="/dashboard/book"><Button size="sm" variant="secondary" className="w-full">Book Appointment</Button></Link>
+                  <p className="text-xs text-blue-400">Contact clinic for appointments.</p>
                 </div>
               )}
             </CardContent>

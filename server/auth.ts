@@ -113,8 +113,8 @@ export function registerAuthRoutes(app: Express): void {
 
       req.session.user = {
         id: user.id,
-        email: user.email,
-        role: user.role
+        email: user.email || email,
+        role: user.role || 'patient'
       };
 
       res.json(user);
@@ -145,7 +145,7 @@ export async function isAuthenticated(req: Request, res: Response, next: NextFun
 }
 
 // Helper to set custom claims (role-based access) - No-op for now
-export async function setUserRole(uid: string, role: 'patient' | 'doctor' | 'admin'): Promise<void> {
+export async function setUserRole(uid: string, role: 'patient' | 'doctor' | 'admin' | 'receptionist'): Promise<void> {
   // No-op
 }
 

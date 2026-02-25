@@ -49,15 +49,14 @@ export function Navigation() {
 
   let navItems = [
     { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
-    { href: "/dashboard/book", label: "Book Appointment", icon: Stethoscope },
     { href: "/dashboard/records", label: "Medical Records", icon: FileText },
   ];
 
   if (isViewAsDoctor) {
     navItems = [
-      { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
-      { href: "/dashboard/appointments", label: "Appointments", icon: Calendar },
-      { href: "/dashboard/patients", label: "My Patients", icon: Users },
+      { href: "/dashboard/doctor?tab=overview", label: "Overview", icon: LayoutDashboard },
+      { href: "/dashboard/doctor?tab=schedule", label: "Appointments", icon: Calendar },
+      { href: "/dashboard/doctor?tab=patients", label: "My Patients", icon: Users },
     ];
   } else if (isViewAsAdmin) {
     navItems = [
@@ -65,9 +64,10 @@ export function Navigation() {
     ];
   } else if (isViewAsReceptionist) {
     navItems = [
-      { href: "/dashboard/receptionist", label: "Overview", icon: LayoutDashboard },
+      { href: "/dashboard/receptionist?tab=patients", label: "Patients", icon: Users },
+      { href: "/dashboard/receptionist?tab=visits", label: "Visits & Check-Ins", icon: Activity },
+      { href: "/dashboard/receptionist?tab=payments", label: "Billing", icon: FileText },
       { href: "/dashboard/book", label: "Book Appointment", icon: Calendar },
-      { href: "/dashboard/records", label: "Records", icon: FileText },
     ];
   }
   const SidebarContent = () => (

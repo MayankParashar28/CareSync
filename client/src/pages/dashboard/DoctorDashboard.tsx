@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Link } from "wouter";
-import { useAppointments } from "@/hooks/use-appointments";
+import { Link, useLocation, useSearch } from "wouter";
+import { useAppointments, useUpdateAppointmentStatus } from "@/hooks/use-appointments";
 import { useDoctorsList, usePatientsList } from "@/hooks/use-profiles";
 import { useAuth } from "@/hooks/use-auth";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -14,6 +14,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function DoctorDashboard() {
     const { user } = useAuth();
+    const [, setLocation] = useLocation();
+    const search = useSearch();
+    const query = new URLSearchParams(search);
+    const currentTab = query.get("tab") || "overview";
     const { data: appointments, isLoading: isLoadingAppts } = useAppointments();
     const { data: patients, isLoading: isLoadingPatients } = usePatientsList();
     const [searchQuery, setSearchQuery] = useState("");
@@ -81,7 +85,7 @@ export default function DoctorDashboard() {
                 </Card>
             </div>
 
-            <Tabs defaultValue="overview" className="space-y-6">
+            <Tabs value={currentTab} onValueChange={(val) => setLocation(`/dashboard/doctor?tab=${val}`)} className="space-y-6">
                 <TabsList>
                     <TabsTrigger value="overview">Overview</TabsTrigger>
                     <TabsTrigger value="patients">My Patients</TabsTrigger>
@@ -104,8 +108,8 @@ export default function DoctorDashboard() {
                                                     {format(new Date(appt.dateTime), "d")}
                                                 </div>
                                                 <div>
-                                                    <p className="font-semibold text-sm">Patient ID: {appt.patientId}</p>
-                                                    <p className="text-xs text-muted-foreground">{appt.reason}</p>
+                                                    <p className="font-semibold text-sm">{appt.patient?.user?.firstName} {appt.patient?.user?.lastName || `ID: ${appt.patientId?.substring(0, 6)}`}</p>
+                                                    <p className="text-xs text-muted-foreground">{appt.reason || 'No reason specified'}</p>
                                                 </div>
                                             </div>
                                             <div className="text-right">
@@ -177,12 +181,140 @@ export default function DoctorDashboard() {
                     )}
                 </TabsContent>
 
-                <TabsContent value="schedule">
-                    <div className="p-10 text-center text-muted-foreground border rounded-lg border-dashed">
-                        Detailed schedule view coming soon.
-                    </div>
+                <TabsContent value="schedule" className="space-y-6">
+                    <ScheduleView appointments={appointments} isLoading={isLoadingAppts} />
                 </TabsContent>
             </Tabs>
+        </div>
+    );
+}
+
+// Schedule View Component
+import { Badge } from "@/components/ui/badge";
+import { useUpdateAppointmentStatus as useUpdateStatus } from "@/hooks/use-appointments";
+import { CheckCircle, XCircle } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+
+function ScheduleView({ appointments, isLoading }: { appointments: any[] | undefined; isLoading: boolean }) {
+    const updateStatus = useUpdateStatus();
+
+    if (isLoading) {
+        return <Skeleton className="h-48 w-full rounded-xl" />;
+    }
+
+    const today = new Date();
+    const todayAppts = (appointments || [])
+        .filter((a: any) => {
+            const d = new Date(a.dateTime);
+            return d.getDate() === today.getDate() &&
+                d.getMonth() === today.getMonth() &&
+                d.getFullYear() === today.getFullYear();
+        })
+        .sort((a: any, b: any) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
+
+    const upcomingAppts = (appointments || [])
+        .filter((a: any) => new Date(a.dateTime) > today)
+        .sort((a: any, b: any) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime())
+        .slice(0, 5);
+
+    const handleStatusChange = (id: string, status: string) => {
+        updateStatus.mutate({ id, status });
+    };
+
+    const renderAppointmentRow = (appt: any) => (
+        <div key={appt.id} className="flex items-center justify-between p-4 bg-white rounded-xl border shadow-sm hover:shadow-md transition-all">
+            <div className="flex items-center gap-4">
+                <div className="flex flex-col items-center min-w-[60px]">
+                    <span className="text-lg font-bold text-primary">{format(new Date(appt.dateTime), "HH:mm")}</span>
+                    <span className="text-[10px] text-muted-foreground uppercase">{format(new Date(appt.dateTime), "a")}</span>
+                </div>
+                <Separator orientation="vertical" className="h-10" />
+                <div>
+                    <p className="font-semibold">{appt.patient?.user?.firstName} {appt.patient?.user?.lastName || `Patient ${appt.patientId?.substring(0, 6)}`}</p>
+                    <p className="text-xs text-muted-foreground">{appt.type} • {appt.reason || 'General'}</p>
+                </div>
+            </div>
+            <div className="flex items-center gap-3">
+                <StatusBadge status={appt.status} />
+                {appt.status === 'pending' && (
+                    <div className="flex gap-1">
+                        <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-emerald-600 hover:bg-emerald-50"
+                            onClick={() => handleStatusChange(appt.id, 'confirmed')}
+                            disabled={updateStatus.isPending}
+                        >
+                            <CheckCircle className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-rose-600 hover:bg-rose-50"
+                            onClick={() => handleStatusChange(appt.id, 'cancelled')}
+                            disabled={updateStatus.isPending}
+                        >
+                            <XCircle className="h-4 w-4" />
+                        </Button>
+                    </div>
+                )}
+                {appt.status === 'confirmed' && (
+                    <Link href={`/dashboard/doctor/patient/${appt.patientId}`}>
+                        <Button size="sm" variant="outline" className="text-xs">Start Consultation</Button>
+                    </Link>
+                )}
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="space-y-8">
+            {/* Today */}
+            <section>
+                <div className="flex items-center gap-3 mb-4">
+                    <h2 className="text-xl font-bold font-display">Today's Schedule</h2>
+                    <Badge variant="outline" className="text-xs">{format(today, "EEEE, MMM d")}</Badge>
+                    <Badge className="bg-primary/10 text-primary border-0">{todayAppts.length} appointment{todayAppts.length !== 1 ? 's' : ''}</Badge>
+                </div>
+                {todayAppts.length > 0 ? (
+                    <div className="space-y-3">
+                        {todayAppts.map(renderAppointmentRow)}
+                    </div>
+                ) : (
+                    <Card className="border-dashed bg-muted/20">
+                        <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                            <Calendar className="h-8 w-8 text-muted-foreground mb-2" />
+                            <h3 className="font-semibold text-lg">No appointments today</h3>
+                            <p className="text-muted-foreground">Your schedule is clear for today.</p>
+                        </CardContent>
+                    </Card>
+                )}
+            </section>
+
+            {/* Upcoming */}
+            {upcomingAppts.length > 0 && (
+                <section>
+                    <h2 className="text-xl font-bold font-display mb-4">Upcoming Appointments</h2>
+                    <div className="space-y-3">
+                        {upcomingAppts.map((appt: any) => (
+                            <div key={appt.id} className="flex items-center justify-between p-4 bg-white rounded-xl border shadow-sm">
+                                <div className="flex items-center gap-4">
+                                    <div className="flex flex-col items-center min-w-[70px]">
+                                        <span className="text-sm font-bold text-slate-800">{format(new Date(appt.dateTime), "MMM d")}</span>
+                                        <span className="text-xs text-muted-foreground">{format(new Date(appt.dateTime), "HH:mm")}</span>
+                                    </div>
+                                    <Separator orientation="vertical" className="h-10" />
+                                    <div>
+                                        <p className="font-semibold">{appt.patient?.user?.firstName} {appt.patient?.user?.lastName || `Patient ${appt.patientId?.substring(0, 6)}`}</p>
+                                        <p className="text-xs text-muted-foreground">{appt.type} • {appt.reason || 'General'}</p>
+                                    </div>
+                                </div>
+                                <StatusBadge status={appt.status} />
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            )}
         </div>
     );
 }

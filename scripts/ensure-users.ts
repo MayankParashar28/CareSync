@@ -83,6 +83,7 @@ async function run() {
         await ensureUser("admin@clinic.com", "admin123", "admin", "System", "Admin");
         await ensureUser("doctor@clinic.com", "doctor123", "doctor", "John", "Doe");
         await ensureUser("patient@clinic.com", "patient123", "patient", "Jane", "Smith");
+        await ensureUser("receptionist@clinic.com", "receptionist123", "receptionist", "Front", "Desk");
 
         console.log("✅ All test users verified/created.");
         process.exit(0);

@@ -119,34 +119,43 @@ export async function registerRoutes(
 
   // === APPOINTMENTS ===
   app.get(api.appointments.list.path, isAuthenticated, async (req: any, res) => {
-    // Check if patient or doctor
     const patient = await storage.getPatientByUserId(req.user.claims.sub);
     const doctor = await storage.getDoctorByUserId(req.user.claims.sub);
+    const userDoc = await storage.getUser(req.user.claims.sub);
+    const isReceptionistOrAdmin = userDoc?.role === 'receptionist' || userDoc?.role === 'admin';
 
     let appointments = [];
     if (patient) {
       appointments = await storage.getAppointmentsForPatient(patient.id);
     } else if (doctor) {
       appointments = await storage.getAppointmentsForDoctor(doctor.id);
+    } else if (isReceptionistOrAdmin) {
+      // Receptionist/admin can see all appointments
+      appointments = await storage.getAllAppointments();
     } else {
       return res.status(400).json({ message: "Profile required" });
     }
 
-    // Enrich appointments with names (ideally do this in SQL join)
-    // For MVP doing simplified fetch. 
-    // In a real app, use joins in storage layer.
     res.json(appointments);
   });
 
   app.post(api.appointments.create.path, isAuthenticated, async (req: any, res) => {
     try {
       const input = api.appointments.create.input.parse(req.body);
-      // Ensure the patient creating it is the one logged in, OR if doctor creates it??
-      // Usually patient books.
-      const patient = await storage.getPatientByUserId(req.user.claims.sub);
-      if (!patient) return res.status(403).json({ message: "Only patients can book appointments" });
+      const userDoc = await storage.getUser(req.user.claims.sub);
+      const isReceptionistOrAdmin = userDoc?.role === 'receptionist' || userDoc?.role === 'admin';
 
-      const appointment = await storage.createAppointment({ ...input, patientId: patient.id });
+      let patientId: string;
+      if (isReceptionistOrAdmin && input.patientId) {
+        // Receptionist/admin can book on behalf of a patient
+        patientId = input.patientId;
+      } else {
+        const patient = await storage.getPatientByUserId(req.user.claims.sub);
+        if (!patient) return res.status(403).json({ message: "Only patients or receptionists can book appointments" });
+        patientId = patient.id;
+      }
+
+      const appointment = await storage.createAppointment({ ...input, patientId });
       res.status(201).json(appointment);
     } catch (err) {
       if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });

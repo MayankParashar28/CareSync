@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
@@ -52,7 +53,7 @@ declare module "express-session" {
     user: {
       id: string;
       email: string;
-      role: 'patient' | 'doctor' | 'admin';
+      role: 'patient' | 'doctor' | 'admin' | 'receptionist';
     };
   }
 }

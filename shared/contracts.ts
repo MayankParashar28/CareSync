@@ -10,7 +10,7 @@ export const userDTOSchema = z.object({
   firstName: nullableString,
   lastName: nullableString,
   profileImageUrl: nullableString,
-  role: z.enum(["patient", "doctor", "admin"]).nullable().optional(),
+  role: z.enum(["patient", "doctor", "admin", "receptionist"]).nullable().optional(),
   createdAt: nullableDateString,
   updatedAt: nullableDateString,
 });

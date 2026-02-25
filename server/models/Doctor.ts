@@ -36,8 +36,8 @@ const DoctorSchema: Schema = new Schema({
     timestamps: true,
 });
 
-// Indexes for efficient queries
-DoctorSchema.index({ user: 1 });
+// Indexes for efficient queries (user index is already created by unique: true)
+
 DoctorSchema.index({ specialization: 1 });
 DoctorSchema.index({ rating: -1 });
 

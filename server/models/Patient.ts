@@ -36,7 +36,7 @@ const PatientSchema: Schema = new Schema({
     timestamps: true,
 });
 
-// Index for efficient queries
-PatientSchema.index({ user: 1 });
+// Index already created by unique: true on user field
+
 
 export const Patient = mongoose.model<IPatient>('Patient', PatientSchema);

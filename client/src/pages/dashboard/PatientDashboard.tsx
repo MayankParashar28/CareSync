@@ -1,11 +1,13 @@
+import { useState, useRef } from "react";
 import { useAppointments } from "@/hooks/use-appointments";
-import { useMedicalRecords } from "@/hooks/use-medical-records";
+import { useMedicalRecords, useMediaFiles, useUploadFile } from "@/hooks/use-medical-records";
 import { useUserProfiles } from "@/hooks/use-profiles";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 import { Link } from "wouter";
 import {
@@ -21,9 +23,189 @@ import {
   ChevronRight,
   Activity,
   Clock,
-  Upload
+  Upload,
+  Download,
+  File,
+  Loader2,
+  X
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+
+
+
+const CATEGORIES = [
+  { value: "report", label: "Lab Report" },
+  { value: "prescription", label: "Prescription" },
+  { value: "scan", label: "Scan" },
+  { value: "xray", label: "X-Ray" },
+  { value: "mri", label: "MRI" },
+  { value: "lab", label: "Lab Work" },
+  { value: "other", label: "Other" },
+];
+
+function LabReportsSection({ patientId }: { patientId?: string }) {
+  const { data: files, isLoading } = useMediaFiles(patientId);
+  const uploadFile = useUploadFile();
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [category, setCategory] = useState("other");
+  const [description, setDescription] = useState("");
+  const [isDragOver, setIsDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUpload = async () => {
+    if (!selectedFile || !patientId) return;
+    await uploadFile.mutateAsync({
+      file: selectedFile,
+      patientId,
+      category,
+      description: description || undefined,
+    });
+    setSelectedFile(null);
+    setDescription("");
+    setCategory("other");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) setSelectedFile(file);
+  };
+
+  const formatFileSize = (bytes: number | null | undefined) => {
+    if (!bytes) return "";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  return (
+    <section>
+      <h3 className="text-lg font-bold font-display text-slate-900 mb-4 flex items-center gap-2">
+        <FileText className="h-5 w-5 text-blue-600" />
+        Lab Reports & Documents
+      </h3>
+
+      {/* Upload area */}
+      <Card className="mb-4">
+        <CardContent className="p-4 space-y-4">
+          <div
+            className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${isDragOver ? "border-primary bg-primary/5" : "border-slate-200 hover:border-slate-300"
+              }`}
+            onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+            onDragLeave={() => setIsDragOver(false)}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Upload className="h-8 w-8 text-slate-400 mx-auto mb-2" />
+            {selectedFile ? (
+              <div className="flex items-center justify-center gap-2">
+                <File className="h-4 w-4 text-blue-500" />
+                <span className="font-medium text-sm">{selectedFile.name}</span>
+                <span className="text-xs text-muted-foreground">({formatFileSize(selectedFile.size)})</span>
+                <button onClick={(e) => { e.stopPropagation(); setSelectedFile(null); }} className="text-slate-400 hover:text-slate-600">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <div>
+                <p className="font-medium text-slate-700 text-sm">Drop a file here or click to browse</p>
+                <p className="text-xs text-muted-foreground mt-1">PDF, JPEG, PNG, WebP — up to 10 MB</p>
+              </div>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,.doc,.docx"
+              onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+            />
+          </div>
+
+          {selectedFile && (
+            <div className="flex gap-3 items-end">
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground mb-1 block">Category</label>
+                <Select value={category} onValueChange={setCategory}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIES.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground mb-1 block">Description (optional)</label>
+                <input
+                  type="text"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                  placeholder="Blood work results..."
+                />
+              </div>
+              <Button
+                size="sm"
+                onClick={handleUpload}
+                disabled={uploadFile.isPending}
+                className="gap-2"
+              >
+                {uploadFile.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                Upload
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* File list */}
+      {isLoading ? (
+        <Skeleton className="h-24 w-full" />
+      ) : files && files.length > 0 ? (
+        <div className="space-y-2">
+          {files.map((file: any) => (
+            <Card key={file.id} className="hover:shadow-sm transition-shadow">
+              <CardContent className="p-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 bg-blue-50 rounded-lg flex items-center justify-center">
+                    <File className="h-4 w-4 text-blue-500" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">{file.fileName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {file.category && <Badge variant="outline" className="text-[10px] mr-2">{file.category}</Badge>}
+                      {formatFileSize(file.fileSize)}
+                      {file.uploadedAt && ` · ${format(new Date(file.uploadedAt), "MMM d, yyyy")}`}
+                    </p>
+                  </div>
+                </div>
+                <a href={file.secureUrl || file.url} target="_blank" rel="noopener noreferrer">
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Download className="h-4 w-4" />
+                  </Button>
+                </a>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Card className="bg-slate-50 border-dashed">
+          <CardContent className="py-8 text-center space-y-2">
+            <div className="mx-auto w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm">
+              <Upload className="h-5 w-5 text-slate-400" />
+            </div>
+            <p className="font-medium text-slate-900">No reports uploaded yet</p>
+            <p className="text-sm text-muted-foreground">Upload lab results, X-rays, or prescriptions above.</p>
+          </CardContent>
+        </Card>
+      )}
+    </section>
+  );
+}
 
 export default function PatientDashboard() {
   const { user } = useAuth();
@@ -260,24 +442,8 @@ export default function PatientDashboard() {
             </div>
           </section>
 
-          {/* 6. Reports (Placeholder) */}
-          <section>
-            <h3 className="text-lg font-bold font-display text-slate-900 mb-4 flex items-center gap-2">
-              <FileText className="h-5 w-5 text-blue-600" />
-              Lab Reports & Documents
-            </h3>
-            <Card className="bg-slate-50 border-dashed">
-              <CardContent className="py-8 text-center space-y-3">
-                <div className="mx-auto w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm">
-                  <Upload className="h-5 w-5 text-slate-400" />
-                </div>
-                <div>
-                  <p className="font-medium text-slate-900">No reports uploaded</p>
-                  <p className="text-sm text-muted-foreground">Lab results and X-rays will appear here.</p>
-                </div>
-              </CardContent>
-            </Card>
-          </section>
+          {/* 6. Lab Reports & Documents */}
+          <LabReportsSection patientId={patientProfile?.id} />
 
         </div>
       </div>

@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes, isAuthenticated, registerObjectStorageRoutes } from "./auth";
+import { registerUploadRoutes } from "./upload";
 import { registerAdminRoutes } from "./routes/admin";
 import { seed } from "./seed";
 
@@ -15,6 +16,7 @@ export async function registerRoutes(
   await setupAuth(app);
   registerAuthRoutes(app);
   registerObjectStorageRoutes(app);
+  registerUploadRoutes(app);
   registerAdminRoutes(app);
 
   // === PATIENTS ===

@@ -74,3 +74,36 @@ export function useCreateMediaFile() {
     },
   });
 }
+
+export function useUploadFile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ file, patientId, category, description }: {
+      file: File;
+      patientId: string;
+      category?: string;
+      description?: string;
+    }) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("patientId", patientId);
+      if (category) formData.append("category", category);
+      if (description) formData.append("description", description);
+
+      const res = await fetchWithAuth("/api/upload", {
+        method: "POST",
+        body: formData,
+        // Don't set Content-Type — browser sets multipart boundary automatically
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: "Upload failed" }));
+        throw new Error(err.message);
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.mediaFiles.list.path] });
+    },
+  });
+}
+

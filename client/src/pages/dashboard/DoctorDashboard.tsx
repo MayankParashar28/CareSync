@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
-import { Calendar, Users, FileText, Clock, Stethoscope, Search, User, ArrowRight, Phone } from "lucide-react";
+import { Calendar, Users, FileText, Clock, Stethoscope, Search, User, ArrowRight, Phone, ChevronLeft, ChevronRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function DoctorDashboard() {
@@ -197,23 +197,45 @@ import { Separator } from "@/components/ui/separator";
 
 function ScheduleView({ appointments, isLoading }: { appointments: any[] | undefined; isLoading: boolean }) {
     const updateStatus = useUpdateStatus();
+    const [selectedDate, setSelectedDate] = useState(new Date());
 
     if (isLoading) {
         return <Skeleton className="h-48 w-full rounded-xl" />;
     }
 
-    const today = new Date();
-    const todayAppts = (appointments || [])
-        .filter((a: any) => {
-            const d = new Date(a.dateTime);
-            return d.getDate() === today.getDate() &&
-                d.getMonth() === today.getMonth() &&
-                d.getFullYear() === today.getFullYear();
-        })
+    const isToday = (d: Date) => {
+        const now = new Date();
+        return d.getDate() === now.getDate() &&
+            d.getMonth() === now.getMonth() &&
+            d.getFullYear() === now.getFullYear();
+    };
+
+    const isSameDay = (d1: Date, d2: Date) =>
+        d1.getDate() === d2.getDate() &&
+        d1.getMonth() === d2.getMonth() &&
+        d1.getFullYear() === d2.getFullYear();
+
+    const goToPrevDay = () => setSelectedDate(d => {
+        const prev = new Date(d);
+        prev.setDate(prev.getDate() - 1);
+        return prev;
+    });
+    const goToNextDay = () => setSelectedDate(d => {
+        const next = new Date(d);
+        next.setDate(next.getDate() + 1);
+        return next;
+    });
+    const goToToday = () => setSelectedDate(new Date());
+
+    const dayAppts = (appointments || [])
+        .filter((a: any) => isSameDay(new Date(a.dateTime), selectedDate))
         .sort((a: any, b: any) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
 
     const upcomingAppts = (appointments || [])
-        .filter((a: any) => new Date(a.dateTime) > today)
+        .filter((a: any) => {
+            const d = new Date(a.dateTime);
+            return d > new Date() && !isSameDay(d, selectedDate);
+        })
         .sort((a: any, b: any) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime())
         .slice(0, 5);
 
@@ -269,30 +291,53 @@ function ScheduleView({ appointments, isLoading }: { appointments: any[] | undef
 
     return (
         <div className="space-y-8">
-            {/* Today */}
-            <section>
-                <div className="flex items-center gap-3 mb-4">
-                    <h2 className="text-xl font-bold font-display">Today's Schedule</h2>
-                    <Badge variant="outline" className="text-xs">{format(today, "EEEE, MMM d")}</Badge>
-                    <Badge className="bg-primary/10 text-primary border-0">{todayAppts.length} appointment{todayAppts.length !== 1 ? 's' : ''}</Badge>
+            {/* Date Navigation */}
+            <div className="flex items-center gap-4">
+                <Button variant="outline" size="icon" onClick={goToPrevDay}>
+                    <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <div className="text-center min-w-[200px]">
+                    <h2 className="text-xl font-bold font-display">
+                        {isToday(selectedDate) ? "Today" : format(selectedDate, "EEEE")}
+                    </h2>
+                    <p className="text-sm text-muted-foreground">{format(selectedDate, "MMMM d, yyyy")}</p>
                 </div>
-                {todayAppts.length > 0 ? (
+                <Button variant="outline" size="icon" onClick={goToNextDay}>
+                    <ChevronRight className="h-4 w-4" />
+                </Button>
+                {!isToday(selectedDate) && (
+                    <Button variant="ghost" size="sm" onClick={goToToday} className="text-xs text-primary">
+                        Back to Today
+                    </Button>
+                )}
+                <Badge className="bg-primary/10 text-primary border-0 ml-auto">
+                    {dayAppts.length} appointment{dayAppts.length !== 1 ? 's' : ''}
+                </Badge>
+            </div>
+
+            {/* Selected Day */}
+            <section>
+                {dayAppts.length > 0 ? (
                     <div className="space-y-3">
-                        {todayAppts.map(renderAppointmentRow)}
+                        {dayAppts.map(renderAppointmentRow)}
                     </div>
                 ) : (
                     <Card className="border-dashed bg-muted/20">
                         <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                             <Calendar className="h-8 w-8 text-muted-foreground mb-2" />
-                            <h3 className="font-semibold text-lg">No appointments today</h3>
-                            <p className="text-muted-foreground">Your schedule is clear for today.</p>
+                            <h3 className="font-semibold text-lg">No appointments</h3>
+                            <p className="text-muted-foreground">
+                                {isToday(selectedDate)
+                                    ? "Your schedule is clear for today."
+                                    : `No appointments on ${format(selectedDate, "MMMM d")}.`}
+                            </p>
                         </CardContent>
                     </Card>
                 )}
             </section>
 
-            {/* Upcoming */}
-            {upcomingAppts.length > 0 && (
+            {/* Upcoming (only shown when viewing today) */}
+            {isToday(selectedDate) && upcomingAppts.length > 0 && (
                 <section>
                     <h2 className="text-xl font-bold font-display mb-4">Upcoming Appointments</h2>
                     <div className="space-y-3">

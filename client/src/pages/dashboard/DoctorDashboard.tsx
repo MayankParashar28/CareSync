@@ -98,7 +98,23 @@ export default function DoctorDashboard() {
                         <div className="lg:col-span-2 space-y-6">
                             <h2 className="text-xl font-bold font-display">Upcoming Appointments</h2>
                             {isLoadingAppts ? (
-                                <Skeleton className="h-48 w-full rounded-xl" />
+                                <div className="space-y-4">
+                                    {[1, 2, 3].map((i) => (
+                                        <div key={i} className="flex items-center justify-between p-4 bg-white rounded-xl border">
+                                            <div className="flex items-center gap-4">
+                                                <Skeleton className="h-10 w-10 rounded-lg" />
+                                                <div className="space-y-2">
+                                                    <Skeleton className="h-4 w-32" />
+                                                    <Skeleton className="h-3 w-24" />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2 text-right">
+                                                <Skeleton className="h-4 w-16 ml-auto" />
+                                                <Skeleton className="h-5 w-20 ml-auto rounded-full" />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             ) : appointments && appointments.length > 0 ? (
                                 <div className="space-y-4">
                                     {appointments.slice(0, 5).map((appt: any) => (

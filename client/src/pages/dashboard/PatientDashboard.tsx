@@ -3,6 +3,7 @@ import { useAppointments } from "@/hooks/use-appointments";
 import { useMedicalRecords, useMediaFiles, useUploadFile } from "@/hooks/use-medical-records";
 import { useUserProfiles } from "@/hooks/use-profiles";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +47,7 @@ const CATEGORIES = [
 function LabReportsSection({ patientId }: { patientId?: string }) {
   const { data: files, isLoading } = useMediaFiles(patientId);
   const uploadFile = useUploadFile();
+  const { toast } = useToast();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [category, setCategory] = useState("other");
   const [description, setDescription] = useState("");
@@ -54,16 +56,21 @@ function LabReportsSection({ patientId }: { patientId?: string }) {
 
   const handleUpload = async () => {
     if (!selectedFile || !patientId) return;
-    await uploadFile.mutateAsync({
-      file: selectedFile,
-      patientId,
-      category,
-      description: description || undefined,
-    });
-    setSelectedFile(null);
-    setDescription("");
-    setCategory("other");
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    try {
+      await uploadFile.mutateAsync({
+        file: selectedFile,
+        patientId,
+        category,
+        description: description || undefined,
+      });
+      toast({ title: "File uploaded", description: `${selectedFile.name} uploaded successfully.` });
+      setSelectedFile(null);
+      setDescription("");
+      setCategory("other");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } catch (error: any) {
+      toast({ title: "Upload failed", description: error.message || "Something went wrong", variant: "destructive" });
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -230,12 +237,42 @@ export default function PatientDashboard() {
   const latestFollowUp = records?.[0]?.followUpDate;
 
   if (isLoadingProfile || isLoadingAppts || isLoadingRecords) {
-    return <div className="p-10 space-y-4"><Skeleton className="h-12 w-1/3" /><Skeleton className="h-64 w-full" /></div>;
+    return (
+      <div className="p-6 lg:p-10 space-y-8 max-w-7xl mx-auto">
+        {/* Header skeleton */}
+        <div className="flex items-center justify-between">
+          <div>
+            <Skeleton className="h-9 w-48 mb-2" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+          <Skeleton className="h-9 w-28" />
+        </div>
+        {/* Grid skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left column */}
+          <div className="space-y-6">
+            <Skeleton className="h-48 w-full rounded-xl" />
+            <Skeleton className="h-32 w-full rounded-xl" />
+            <Skeleton className="h-32 w-full rounded-xl" />
+          </div>
+          {/* Right column */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <Skeleton className="h-20 rounded-xl" />
+              <Skeleton className="h-20 rounded-xl" />
+              <Skeleton className="h-20 rounded-xl" />
+            </div>
+            <Skeleton className="h-48 w-full rounded-xl" />
+            <Skeleton className="h-32 w-full rounded-xl" />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="p-6 lg:p-10 space-y-8 max-w-7xl mx-auto bg-slate-50/50 min-h-screen">
-      <header className="flex items-center justify-between">
+      <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-display font-bold text-slate-900">Medical File</h1>
           <p className="text-muted-foreground mt-1">Patient ID: {patientProfile?.id?.substring(0, 8).toUpperCase() || '---'}</p>
@@ -345,7 +382,7 @@ export default function PatientDashboard() {
         <div className="lg:col-span-2 space-y-8">
 
           {/* 3. Visit Summary Stats */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card>
               <CardContent className="pt-6 text-center">
                 <div className="text-2xl font-bold text-slate-900">{totalVisits}</div>
